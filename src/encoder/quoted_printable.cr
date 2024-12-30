@@ -1,49 +1,62 @@
 struct Athena::MIME::Encoder::QuotedPrintable
   include Athena::MIME::Encoder::Interface
 
-  def encode(input : IO, charset : String? = "UTF-8", first_line_offset : Int32 = 0, max_line_length : Int32 = 0) : String
-    self.standardize self.encode_internal input.gets_to_end
+  def encode(input : IO, charset : String? = "UTF-8", first_line_offset : Int32 = 0, max_line_length : Int32? = nil) : String
+    self.standardize self.quoted_printable_encode(input.gets_to_end)
   end
 
-  private MAX_LINE_LENGTH = 75
+  def quoted_printable_encode(str)
+    max_line_length = 75
+    hex = "0123456789ABCDEF"
+    line_pos = 0
 
-  private def encode_internal(input : String) : String
-    String.build input.size do |io|
-      line_length = 0
+    String.build do |result|
+      i = 0
 
-      input.each_char do |char|
-        if char.ord < 32 || char.ord > 126 || char.in?('=', '?', '_', '\r', '\n')
-          line_length = self.encode io, char, line_length
+      while i < str.bytesize
+        c = str.bytes[i]
+        # p(len: str.bytesize - 1 - i, byte: c)
+
+        if c == 0x0D && i + 1 < str.bytesize && str.bytes[i + 1] == 0x0A
+          result << "\r\n"
+          i += 2
+          line_pos = 0
         else
-          line_length = self.soft_wrap io, line_length
-          io << char
+          if c.chr.control? || c == 0x7F || c >= 0x80 || c == 0x3D || (c == 0x20 && i + 1 < str.bytesize && str.bytes[i + 1] == 0x0D)
+            needs_line_break = false
+
+            line_pos += 3
+            if c <= 0x7F && (line_pos) > max_line_length
+              needs_line_break = true
+            elsif c > 0x7F && c <= 0xDF && ((line_pos + 3) > max_line_length)
+              needs_line_break = true
+            elsif c > 0xDF && c <= 0xEF && ((line_pos + 6) > max_line_length)
+              needs_line_break = true
+            elsif c > 0xEF && c <= 0xF4 && ((line_pos + 9) > max_line_length)
+              needs_line_break = true
+            end
+
+            if needs_line_break
+              result << "=\r\n"
+              line_pos = 3
+            end
+
+            result << "="
+            result << hex[c >> 4]
+            result << hex[c & 0xF]
+          else
+            line_pos += 1
+            if line_pos > max_line_length
+              result << "=\r\n"
+              line_pos = 1
+            end
+            result << c.chr
+            # line_pos += 1
+          end
+          i += 1
         end
       end
     end
-  end
-
-  private def encode(io : IO, char : Char, line_length : Int32) : Int32
-    # Ensure each char is fully written on its own line.
-    line_length = self.soft_wrap io, line_length, char.bytes.size * 3
-
-    char.each_byte do |byte|
-      io << '='
-      byte.to_s io, base: 16, upcase: true, precision: 2
-    end
-
-    line_length
-  end
-
-  private def soft_wrap(io, line_length : Int32, increment : Int32 = 1) : Int32
-    new_line_length = line_length + increment
-
-    return new_line_length if new_line_length <= MAX_LINE_LENGTH
-
-    io << '='
-    io << '\r'
-    io << '\n'
-
-    0
   end
 
   private def standardize(string : String) : String
