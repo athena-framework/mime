@@ -1,39 +1,63 @@
 struct Athena::MIME::Address
   private FROM_STRING_PATTERN = /(?<displayName>[^<]*)<(?<addrSpec>.*)>[^>]*/
 
+  protected class_getter encoder : AMIME::Encoder::AddressEncoderInterface do
+    AMIME::Encoder::IDNAddress.new
+  end
+
   getter address : String
   getter name : String
 
-  def self.new(addresses : Enumerable(self | String)) : Array(self)
+  def self.create(*addresses : self | String) : Array(self)
+    self.create addresses
+  end
+
+  def self.create(addresses : Enumerable(self | String)) : Array(self)
     addresses.map do |a|
-      new a
+      create a
     end.to_a
   end
 
-  def self.new(address : self | String) : self
+  def self.create(address : self | String) : self
     return address if address.is_a? self
 
     return new(address) unless address.includes? '<'
 
-    # Validate
-    raise "BUG: Invalid address"
+    unless match = address.match FROM_STRING_PATTERN
+      raise AMIME::Exception::InvalidArgument.new "Could not parse '#{address}' to a '#{self}' instance."
+    end
+
+    new match["addrSpec"], match["displayName"].strip(" '\"")
   end
 
   def initialize(address : String, name : String = "")
     @address = address.strip
     @name = name.gsub(/\n|\r/, "").strip
 
-    # TODO: Validate the email?
+    # TODO: Validate the email
   end
 
   def_clone
 
   def to_s(io : IO) : Nil
-    @address.to_s io
+    if name = self.encoded_name.presence
+      return io << %("#{name}" <#{self.encoded_address}>)
+    end
+
+    io << self.encoded_address
   end
 
   def encoded_address : String
-    @address
-    # self.class.encoder.encode @address
+    self.class.encoder.encode @address
+  end
+
+  def encoded_name : String
+    @name
+  end
+
+  def has_unicode_local_part? : Bool
+    local, _, _ = @address.partition '@'
+
+    !local.ascii_only?
   end
 end

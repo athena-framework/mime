@@ -1,7 +1,7 @@
 abstract struct Athena::MIME::Part::AbstractText < Athena::MIME::Part::Abstract
   private DEFAULT_ENCODERS = ["quoted-printable", "base64"]
 
-  @@encoders = Hash(String, AMIME::Encoder::Interface).new
+  @@encoders = Hash(String, AMIME::Encoder::ContentEncoderInterface).new
 
   def self.new(
     body : String,
@@ -85,7 +85,7 @@ abstract struct Athena::MIME::Part::AbstractText < Athena::MIME::Part::Abstract
     @charset.nil? ? "base64" : "quoted-printable"
   end
 
-  private def encoder : AMIME::Encoder::Interface
+  private def encoder : AMIME::Encoder::ContentEncoderInterface
     case @encoding
     when "quoted-printable" then @@encoders[@encoding] = AMIME::Encoder::QuotedPrintable.new
     else

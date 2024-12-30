@@ -1,5 +1,5 @@
-struct Athena::MIME::Encoder::QuotedPrintable
-  include Athena::MIME::Encoder::Interface
+struct Athena::MIME::Encoder::QuotedPrintableContent
+  include Athena::MIME::Encoder::ContentEncoderInterface
 
   private MAX_LINE_LENGTH = 75
 
@@ -58,8 +58,19 @@ struct Athena::MIME::Encoder::QuotedPrintable
     end
   end
 
-  def encode(input : IO, charset : String? = "UTF-8", first_line_offset : Int32 = 0, max_line_length : Int32? = nil) : String
-    self.standardize self.class.quoted_printable_encode input.gets_to_end
+  # :inherit:
+  def encode(input : String, charset : String? = "UTF-8", first_line_offset : Int32 = 0, max_line_length : Int32? = nil) : String
+    self.standardize self.class.quoted_printable_encode input
+  end
+
+  # :inherit:
+  def encode(input : IO, max_line_length : Int32? = nil) : String
+    self.encode input.gets_to_end
+  end
+
+  # :inherit:
+  def name : String
+    "quoted-printable"
   end
 
   private def standardize(string : String) : String
