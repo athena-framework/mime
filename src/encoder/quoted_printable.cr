@@ -1,38 +1,39 @@
 struct Athena::MIME::Encoder::QuotedPrintable
   include Athena::MIME::Encoder::Interface
 
-  def encode(input : IO, charset : String? = "UTF-8", first_line_offset : Int32 = 0, max_line_length : Int32? = nil) : String
-    self.standardize self.quoted_printable_encode(input.gets_to_end)
-  end
+  private MAX_LINE_LENGTH = 75
 
-  def quoted_printable_encode(str)
-    max_line_length = 75
-    hex = "0123456789ABCDEF"
+  # Encodes a string as per https://datatracker.ietf.org/doc/html/rfc2045#section-6.7.
+  def self.quoted_printable_encode(string : String) : String
+    # TODO: Refactor this to be more idiomatic.
+
     line_pos = 0
 
     String.build do |result|
       i = 0
 
-      while i < str.bytesize
-        c = str.bytes[i]
-        # p(len: str.bytesize - 1 - i, byte: c)
+      bytesize = string.bytesize
+      bytes = string.bytes
 
-        if c == 0x0D && i + 1 < str.bytesize && str.bytes[i + 1] == 0x0A
+      while i < bytesize
+        c = bytes[i]
+
+        if c == 0x0D && i + 1 < bytesize && bytes[i + 1] == 0x0A
           result << "\r\n"
           i += 2
           line_pos = 0
         else
-          if c.chr.control? || c == 0x7F || c >= 0x80 || c == 0x3D || (c == 0x20 && i + 1 < str.bytesize && str.bytes[i + 1] == 0x0D)
+          if c.chr.control? || c == 0x7F || c >= 0x80 || c == 0x3D || (c == 0x20 && i + 1 < bytesize && bytes[i + 1] == 0x0D)
             needs_line_break = false
 
             line_pos += 3
-            if c <= 0x7F && (line_pos) > max_line_length
+            if c <= 0x7F && (line_pos) > MAX_LINE_LENGTH
               needs_line_break = true
-            elsif c > 0x7F && c <= 0xDF && ((line_pos + 3) > max_line_length)
+            elsif c > 0x7F && c <= 0xDF && ((line_pos + 3) > MAX_LINE_LENGTH)
               needs_line_break = true
-            elsif c > 0xDF && c <= 0xEF && ((line_pos + 6) > max_line_length)
+            elsif c > 0xDF && c <= 0xEF && ((line_pos + 6) > MAX_LINE_LENGTH)
               needs_line_break = true
-            elsif c > 0xEF && c <= 0xF4 && ((line_pos + 9) > max_line_length)
+            elsif c > 0xEF && c <= 0xF4 && ((line_pos + 9) > MAX_LINE_LENGTH)
               needs_line_break = true
             end
 
@@ -41,22 +42,24 @@ struct Athena::MIME::Encoder::QuotedPrintable
               line_pos = 3
             end
 
-            result << "="
-            result << hex[c >> 4]
-            result << hex[c & 0xF]
+            result << '='
+            c.to_s result, base: 16, upcase: true, precision: 2
           else
             line_pos += 1
-            if line_pos > max_line_length
+            if line_pos > MAX_LINE_LENGTH
               result << "=\r\n"
               line_pos = 1
             end
             result << c.chr
-            # line_pos += 1
           end
           i += 1
         end
       end
     end
+  end
+
+  def encode(input : IO, charset : String? = "UTF-8", first_line_offset : Int32 = 0, max_line_length : Int32? = nil) : String
+    self.standardize self.class.quoted_printable_encode input.gets_to_end
   end
 
   private def standardize(string : String) : String
