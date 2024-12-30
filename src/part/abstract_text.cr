@@ -3,6 +3,15 @@ abstract struct Athena::MIME::Part::AbstractText < Athena::MIME::Part::Abstract
 
   @@encoders = Hash(String, AMIME::Encoder::Interface).new
 
+  def self.new(
+    body : String,
+    charset : String? = "UTF-8",
+    subtype : String = "plain",
+    encoding : String? = nil
+  )
+    new IO::Memory.new(body), charset, subtype, encoding
+  end
+
   property disposition : String? = nil
   property name : String? = nil
 

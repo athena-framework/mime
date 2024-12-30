@@ -1,5 +1,17 @@
 class Athena::MIME::Header::Collection
-  private UNIQUE_HEADERS = ["date"]
+  private UNIQUE_HEADERS = [
+    "bcc",
+    "cc",
+    "date",
+    "from",
+    "in-reply-to",
+    "message-id",
+    "references",
+    "reply-to",
+    "sender",
+    "subject",
+    "to",
+  ]
 
   # :nodoc:
   enum Type

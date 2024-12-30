@@ -84,7 +84,7 @@ abstract class Athena::MIME::Header::Abstract(T)
     tokens
   end
 
-  private def encode_words(header : AMIME::Header::Interface, input : String, used_lenth : Int32 = -1) : String
+  private def encode_words(header : AMIME::Header::Interface, input : String, used_length : Int32 = -1) : String
     String.build do |io|
       tokens = self.encodable_word_tokens input
 
