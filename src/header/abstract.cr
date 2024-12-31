@@ -3,6 +3,10 @@ require "./interface"
 abstract class Athena::MIME::Header::Abstract(T)
   include Interface
 
+  protected class_getter encoder : AMIME::Encoder::QuotedPrintableMIMEHeader do
+    AMIME::Encoder::QuotedPrintableMIMEHeader.new
+  end
+
   getter name : String
   property max_line_length : Int32 = 76
   property lang : String? = nil
@@ -21,7 +25,7 @@ abstract class Athena::MIME::Header::Abstract(T)
   end
 
   private def generate_token_lines(token : String) : Array(String)
-    token.split /(\r\n)/
+    token.split /(\r\n)/, options: :no_utf_check
   end
 
   private def tokens_to_string(tokens : Array(String)) : String
@@ -50,7 +54,7 @@ abstract class Athena::MIME::Header::Abstract(T)
     string = string || self.body_to_s
 
     tokens = [] of String
-    string.split /(?=[ \t])/ do |token|
+    string.split /(?=[ \t])/, options: :no_utf_check do |token|
       tokens.concat self.generate_token_lines token
     end
 
@@ -58,14 +62,23 @@ abstract class Athena::MIME::Header::Abstract(T)
   end
 
   private def token_needs_encoding?(token : String) : Bool
-    token.matches? /[\x00-\x08\x10-\x19\x7F-\xFF\r\n]/
+    return true unless token.valid_encoding?
+
+    token.each_char.any? do |char|
+      ord = char.ord
+
+      0x00 <= ord <= 0x08 ||
+        0x10 <= ord <= 0x19 ||
+        0x7F <= ord <= 0xFF ||
+        char.in?('\r', '\n')
+    end
   end
 
   private def encodable_word_tokens(string : String) : Array(String)
     tokens = [] of String
     encoded_token = ""
 
-    string.split /(?=[\t ])/ do |token|
+    string.split /(?=[\t ])/, options: :no_utf_check do |token|
       if self.token_needs_encoding? token
         encoded_token += token
       else
@@ -85,17 +98,59 @@ abstract class Athena::MIME::Header::Abstract(T)
   end
 
   private def encode_words(header : AMIME::Header::Interface, input : String, used_length : Int32 = -1) : String
+    bytes_written = 0
+
     String.build do |io|
       tokens = self.encodable_word_tokens input
 
       tokens.each do |token|
         # See RFC 2822, Sect 2.2 (really 2.2 ??)
         if self.token_needs_encoding? token
+          # Dont encode starting WSP
+          case first_char = token[0]
+          when ' ', '\t'
+            io << first_char
+            bytes_written += first_char.bytesize
+            token = token[1..]
+          end
+
+          if -1 == used_length
+            used_length = "#{header.name}: ".bytesize + bytes_written
+          end
+
+          encoded_token = self.token_as_encoded_word token, used_length
+          io << encoded_token
+          bytes_written += encoded_token.bytesize
         else
           io << token
+          bytes_written += token.bytesize
         end
       end
     end
+  end
+
+  private def token_as_encoded_word(token : String, first_line_offset : Int32 = 0) : String
+    # Adjust first_line_offset to account or space needed for syntax
+    charset_decl = @charset
+    if lang = @lang
+      charset_decl = "#{charset_decl}*#{lang}"
+    end
+    encoded_wrapper_length = "=?#{charset_decl}?#{AMIME::Header::Abstract.encoder.name}??=".bytesize
+
+    if first_line_offset >= 75
+      # TODO: Is this needed?
+      first_line_offset = 0
+    end
+
+    encoded_text_lines = AMIME::Header::Abstract.encoder.encode(token, @charset, first_line_offset, 75 - encoded_wrapper_length).split "\r\n"
+
+    if "iso-2022-jp" != @charset.downcase
+      encoded_text_lines.map! do |line|
+        "=?#{charset_decl}?#{AMIME::Header::Abstract.encoder.name}?#{line}?="
+      end
+    end
+
+    encoded_text_lines.join "\r\n "
   end
 
   private def create_phrase(io : IO, header : AMIME::Header::Interface, input : String, charset : String, shorten : Bool = false) : Nil

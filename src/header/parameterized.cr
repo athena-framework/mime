@@ -53,7 +53,7 @@ class Athena::MIME::Header::Parameterized < Athena::MIME::Header::Unstructured
     encoded = false
 
     # Allow room for parameter name, indices, "=", and DQUOTEs
-    max_value_length = @max_line_length - "#{name}=*N\"\";".size - 1
+    max_value_length = @max_line_length - "#{name}=*N\"\";".bytesize - 1
     first_line_offset = 0
 
     # If it's not already a valid parameter
@@ -62,7 +62,10 @@ class Athena::MIME::Header::Parameterized < Athena::MIME::Header::Unstructured
       # ... and it's not ASCII
       unless value.ascii_only?
         encoded = true
-        # TODO: Handle this
+
+        # Allow space for the indices, charset, and language
+        max_value_length = @max_line_length - "#{name}*N*=\"\";".bytesize - 1
+        first_line_offset = "#{@charset}'#{@lang}'".bytesize
       end
 
       if name.in?("name", "filename") && "form-data" == @value && "content-disposition" == @name.downcase && !value.ascii_only?
@@ -91,6 +94,10 @@ class Athena::MIME::Header::Parameterized < Athena::MIME::Header::Unstructured
     if encoded || value.bytesize > max_value_length
       if encoder = @encoder
         value = encoder.encode orig_value, @charset, first_line_offset, max_value_length
+      else
+        # TODO: Do we really need to continue to support this non-RFC compliant flow?
+        value = self.token_as_encoded_word orig_value
+        encoded = false
       end
     end
 
