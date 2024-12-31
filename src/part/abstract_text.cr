@@ -3,36 +3,27 @@ abstract struct Athena::MIME::Part::AbstractText < Athena::MIME::Part::Abstract
 
   @@encoders = Hash(String, AMIME::Encoder::ContentEncoderInterface).new
 
-  def self.new(
-    body : String,
-    charset : String? = "UTF-8",
-    subtype : String = "plain",
-    encoding : String? = nil
-  )
-    new IO::Memory.new(body), charset, subtype, encoding
-  end
-
   property disposition : String? = nil
   property name : String? = nil
 
   @encoding : String
 
   def initialize(
-    @body : IO,
+    body : String | IO,
     @charset : String? = "UTF-8",
-    @subtype : String = "plain",
+    @sub_type : String = "plain",
     encoding : String? = nil
   )
     if body.is_a? ::File
       if !::File::Info.readable?(body.path) || ::File.directory?(body.path)
-        raise "BUG: File is not readable"
+        raise AMIME::Exception::InvalidArgument.new "File is not readable."
       end
     end
 
-    # Seekable?
+    @body = body
 
     if encoding
-      raise "BUG: Unexpected encoding type" unless DEFAULT_ENCODERS.includes? encoding
+      raise AMIME::Exception::InvalidArgument.new "Unexpected encoding type" unless DEFAULT_ENCODERS.includes? encoding
 
       @encoding = encoding
     else
@@ -47,12 +38,22 @@ abstract struct Athena::MIME::Part::AbstractText < Athena::MIME::Part::Abstract
 
   # :inherit:
   def media_sub_type : String
-    @subtype
+    @sub_type
   end
 
   # :inherit:
   def body_to_s(io : IO) : Nil
-    io << self.encoder.encode @body, @charset
+    io << self.encoder.encode self.body, @charset
+  end
+
+  def body : String
+    case body = @body
+    in String then body
+    in IO
+      body.rewind if body.responds_to? :rewind
+
+      body.gets_to_end
+    end
   end
 
   def prepared_headers : AMIME::Header::Collection
@@ -87,7 +88,7 @@ abstract struct Athena::MIME::Part::AbstractText < Athena::MIME::Part::Abstract
 
   private def encoder : AMIME::Encoder::ContentEncoderInterface
     case @encoding
-    when "quoted-printable" then @@encoders[@encoding] = AMIME::Encoder::QuotedPrintable.new
+    when "quoted-printable" then @@encoders[@encoding] = AMIME::Encoder::QuotedPrintableContent.new
     else
       @@encoders[@encoding]
     end

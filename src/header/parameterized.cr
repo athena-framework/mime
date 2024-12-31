@@ -15,6 +15,8 @@ class Athena::MIME::Header::Parameterized < Athena::MIME::Header::Unstructured
     end
   end
 
+  def_equals @value, @name, @parameters, @max_line_length, @lang, @charset
+
   def [](name : String) : String
     @parameters[name]? || ""
   end

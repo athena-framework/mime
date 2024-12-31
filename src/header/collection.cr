@@ -34,6 +34,8 @@ class Athena::MIME::Header::Collection
 
   def_clone
 
+  def_equals @headers, @line_length
+
   def to_s(io : IO) : Nil
     @headers.each do |name, collection|
       collection.each do |header|
@@ -88,15 +90,15 @@ class Athena::MIME::Header::Collection
   end
 
   def add_path_header(name : String, body : AMIME::Address | String) : Nil
-    self << AMIME::Header::Path.new name, AMIME::Address.new(body)
+    self << AMIME::Header::Path.new name, AMIME::Address.create(body)
   end
 
   def add_mailbox_header(name : String, body : AMIME::Address | String) : Nil
-    self << AMIME::Header::Mailbox.new name, AMIME::Address.new(body)
+    self << AMIME::Header::Mailbox.new name, AMIME::Address.create(body)
   end
 
   def add_mailbox_list_header(name : String, body : Array(AMIME::Address | String)) : Nil
-    self << AMIME::Header::MailboxList.new name, AMIME::Address.new(body)
+    self << AMIME::Header::MailboxList.new name, AMIME::Address.create(body)
   end
 
   def add_parameterized_header(name : String, body : String, params : Hash(String, String) = {} of String => String) : Nil

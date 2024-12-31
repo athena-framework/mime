@@ -35,4 +35,4 @@ end
 #   .priority(:low)
 #   .text("Hello there good sir!")
 
-# p email
+# puts email.body

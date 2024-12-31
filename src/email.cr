@@ -18,6 +18,8 @@ class Athena::MIME::Email < Athena::MIME::Message
   getter html_charset : String? = nil
 
   @attachments = Array(AMIME::Part::Data).new
+
+  # Used to avoid wrong body hash in DKIM signatures with multiple parts (e.g. HTML + TEXT) due to multiple boundaries.
   @cached_body : AMIME::Part::Abstract? = nil
 
   def subject : String?
@@ -153,13 +155,13 @@ class Athena::MIME::Email < Athena::MIME::Message
       return self.set_list_address_header_body name, addresses
     end
 
-    header.add_addresses AMIME::Address.new addresses
+    header.add_addresses AMIME::Address.create addresses
 
     self
   end
 
   private def set_list_address_header_body(name : String, addresses : Enumerable(AMIME::Address | String)) : self
-    addresses = AMIME::Address.new addresses
+    addresses = AMIME::Address.create addresses
 
     if header = @headers[name]?
       header.body = addresses
@@ -264,9 +266,19 @@ class Athena::MIME::Email < Athena::MIME::Message
     {html_part, other_parts, related_parts}
   end
 
-  private def ensure_body_is_valid
+  private def ensure_validity : Nil
+    self.ensure_body_is_valid
+
+    if "1" == @headers.header_body("x-unsent")
+      raise AMIME::Exception::Logic.new "Cannot send messages marked as 'draft'."
+    end
+
+    super
+  end
+
+  private def ensure_body_is_valid : Nil
     if @text.nil? && @html.nil? && @attachments.empty?
-      raise "BUG: A message must have a text or an HTML part or attachments."
+      raise AMIME::Exception::Logic.new "A message must have a text or an HTML part or attachments."
     end
   end
 end

@@ -83,6 +83,8 @@ struct Athena::MIME::Encoder::QuotedPrintableContent
       .gsub(" =0D=0A", "=20\r\n")
       .gsub("=0D=0A", "\r\n")
 
+    return string if string.empty?
+
     case last_char = string[-1].ord
     when 0x09 then string.sub(-1, "=09")
     when 0x20 then string.sub(-1, "=20")

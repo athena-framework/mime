@@ -5,6 +5,8 @@ class Athena::MIME::Header::Unstructured < Athena::MIME::Header::Abstract(String
     super name
   end
 
+  def_equals @value, @name, @max_line_length, @lang, @charset
+
   def body : String
     @value
   end

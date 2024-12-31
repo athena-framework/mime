@@ -5,6 +5,8 @@ class Athena::MIME::Header::Path < Athena::MIME::Header::Abstract(Athena::MIME::
     super name
   end
 
+  def_equals @value, @name, @max_line_length, @lang, @charset
+
   def body : AMIME::Address
     @value
   end
