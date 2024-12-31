@@ -11,10 +11,10 @@ class Athena::MIME::Email < Athena::MIME::Message
     end
   end
 
-  @text : IO? = nil
+  @text : IO | String | Nil = nil
   getter text_charset : String? = nil
 
-  @html : IO? = nil
+  @html : IO | String | Nil = nil
   getter html_charset : String? = nil
 
   @attachments = Array(AMIME::Part::Data).new
@@ -24,7 +24,7 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def subject : String?
     if header = @headers["subject"]?
-      return header.body
+      return header.body.as String
     end
   end
 
@@ -36,7 +36,7 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def date : Time?
     if header = @headers["date"]?
-      return header.body
+      return header.body.as Time
     end
   end
 
@@ -48,31 +48,31 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def return_path : AMIME::Address?
     if header = @headers["return-path"]?
-      return header.body
+      return header.body.as AMIME::Address
     end
   end
 
   def return_path(address : AMIME::Address | String) : self
-    @headers.upsert "return-path", AMIME::Address.new(address), ->@headers.add_path_header(String, AMIME::Address)
+    @headers.upsert "return-path", AMIME::Address.create(address), ->@headers.add_path_header(String, AMIME::Address)
 
     self
   end
 
   def sender : AMIME::Address?
     if header = @headers["sender"]?
-      return header.body
+      return header.body.as AMIME::Address
     end
   end
 
   def sender(address : AMIME::Address | String) : self
-    @headers.upsert "sender", AMIME::Address.new(address), ->@headers.add_mailbox_header(String, AMIME::Address)
+    @headers.upsert "sender", AMIME::Address.create(address), ->@headers.add_mailbox_header(String, AMIME::Address)
 
     self
   end
 
   def from : Array(AMIME::Address)
     if header = @headers["from"]?
-      return header.body
+      return header.body.as(Array(AMIME::Address)).dup
     end
 
     [] of AMIME::Address
@@ -88,7 +88,7 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def reply_to : Array(AMIME::Address)
     if header = @headers["reply-to"]?
-      return header.body
+      return header.body.as(Array(AMIME::Address)).dup
     end
 
     [] of AMIME::Address
@@ -104,7 +104,7 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def to : Array(AMIME::Address)
     if header = @headers["to"]?
-      return header.body
+      return header.body.as(Array(AMIME::Address)).dup
     end
 
     [] of AMIME::Address
@@ -120,7 +120,7 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def cc : Array(AMIME::Address)
     if header = @headers["cc"]?
-      return header.body
+      return header.body.as(Array(AMIME::Address)).dup
     end
 
     [] of AMIME::Address
@@ -136,7 +136,7 @@ class Athena::MIME::Email < Athena::MIME::Message
 
   def bcc : Array(AMIME::Address)
     if header = @headers["bcc"]?
-      return header.body
+      return header.body.as(Array(AMIME::Address)).dup
     end
 
     [] of AMIME::Address
@@ -183,32 +183,32 @@ class Athena::MIME::Email < Athena::MIME::Message
   end
 
   def priority(priority : AMIME::Email::Priority) : self
-    @headers.add_text_header "x-priority", priority.to_s
+    @headers.upsert "x-priority", priority.to_s, ->@headers.add_text_header(String, String)
 
     self
   end
 
   def text(body : String | IO | Nil, charset : String = "UTF-8") : self
     @cached_body = nil
-    @text = body.is_a?(String) ? IO::Memory.new(body) : body
+    @text = body
     @text_charset = charset
 
     self
   end
 
-  def text_body : IO
+  def text_body : IO | String | Nil
     @text
   end
 
   def html(body : String | IO | Nil, charset : String = "UTF-8") : self
     @cached_body = nil
-    @html = body.is_a?(String) ? IO::Memory.new(body) : body
+    @html = body
     @html_charset = charset
 
     self
   end
 
-  def html_body : IO
+  def html_body : IO | String | Nil
     @html
   end
 
@@ -250,8 +250,10 @@ class Athena::MIME::Email < Athena::MIME::Message
     names = [] of String
     html_part = nil
     if html = @html
+      html_part = AMIME::Part::Text.new html, @html_charset, "html"
+      html = html_part.body
 
-      # TODO: Handle HTML
+      # TODO: Something about filtering with regexes?
     end
 
     other_parts = Array(AMIME::Part::Abstract).new

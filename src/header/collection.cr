@@ -37,7 +37,7 @@ class Athena::MIME::Header::Collection
   def_equals @headers, @line_length
 
   def to_s(io : IO) : Nil
-    @headers.each do |name, collection|
+    @headers.each do |_, collection|
       collection.each do |header|
         header.to_s(io)
         io << '\r' << '\n'
