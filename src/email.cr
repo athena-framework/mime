@@ -17,7 +17,7 @@ class Athena::MIME::Email < Athena::MIME::Message
   @html : IO | String | Nil = nil
   getter html_charset : String? = nil
 
-  @attachments = Array(AMIME::Part::Data).new
+  getter attachments : Array(AMIME::Part::Data) = Array(AMIME::Part::Data).new
 
   # Used to avoid wrong body hash in DKIM signatures with multiple parts (e.g. HTML + TEXT) due to multiple boundaries.
   @cached_body : AMIME::Part::Abstract? = nil
@@ -212,6 +212,29 @@ class Athena::MIME::Email < Athena::MIME::Message
     @html
   end
 
+  def attach(body : String | IO, name : String? = nil, content_type : String? = nil) : self
+    self.add_part AMIME::Part::Data.new body, name, content_type
+  end
+
+  def attach_from_path(path : String | Path, name : String? = nil, content_type : String? = nil) : self
+    self.add_part AMIME::Part::Data.new AMIME::Part::File.new(path), name, content_type
+  end
+
+  def embed(body : String | IO, name : String? = nil, content_type : String? = nil) : self
+    self.add_part AMIME::Part::Data.new(body, name, content_type).as_inline
+  end
+
+  def embed_from_path(path : String | Path, name : String? = nil, content_type : String? = nil) : self
+    self.add_part AMIME::Part::Data.new(AMIME::Part::File.new(path), name, content_type).as_inline
+  end
+
+  def add_part(part : AMIME::Part::Data) : self
+    @cached_body = nil
+    @attachments << part
+
+    self
+  end
+
   def body : AMIME::Part::Abstract
     if body = super
       return body
@@ -232,7 +255,7 @@ class Athena::MIME::Email < Athena::MIME::Message
     part = (text = @text) ? AMIME::Part::Text.new(text, @text_charset) : nil
 
     if html_part
-      part = html_part
+      part = part ? AMIME::Part::Multipart::Alternative.new(part, html_part) : html_part
     end
 
     unless related_parts.empty?
@@ -240,7 +263,11 @@ class Athena::MIME::Email < Athena::MIME::Message
     end
 
     unless other_parts.empty?
-      # TODO: Handle this
+      part = if part
+               AMIME::Part::Multipart::Mixed.new other_parts.unshift(part)
+             else
+               AMIME::Part::Multipart::Mixed.new other_parts
+             end
     end
 
     @cached_body = part.not_nil!
@@ -253,19 +280,30 @@ class Athena::MIME::Email < Athena::MIME::Message
       html_part = AMIME::Part::Text.new html, @html_charset, "html"
       html = html_part.body
 
-      # TODO: Something about filtering with regexes?
+      regexes = {
+        /<img\s+[^>]*src\s*=\s*(?:([\'"])cid:(.+?)\\1|cid:([^>\s]+))/i,
+        /<\w+\s+[^>]*background\s*=\s*(?:([\'"])cid:(.+?)\\1|cid:([^>\s]+))/i,
+      }
+
+      regexes.each do |regex|
+      end
     end
 
     other_parts = Array(AMIME::Part::Abstract).new
-    related_parts = Array(AMIME::Part::Abstract).new
+    related_parts = Hash(String, AMIME::Part::Abstract).new
 
-    # TODO: Handle attachments
+    @attachments.each do |part|
+      names.each do |name|
+      end
+
+      other_parts << part
+    end
 
     if html_part
       html_part = AMIME::Part::Text.new html.not_nil!, @html_charset.not_nil!, "html"
     end
 
-    {html_part, other_parts, related_parts}
+    {html_part, other_parts, related_parts.values}
   end
 
   private def ensure_validity : Nil

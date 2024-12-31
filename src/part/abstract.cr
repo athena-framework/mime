@@ -20,15 +20,15 @@ abstract struct Athena::MIME::Part::Abstract
     end
   end
 
-  def inspect(io : IO) : Nil
-    self.media_type.to_s io
-    io << '/'
-    self.media_sub_type.to_s io
-  end
+  # def inspect(io : IO) : Nil
+  #   self.media_type.to_s io
+  #   io << '/'
+  #   self.media_sub_type.to_s io
+  # end
 
   def to_s(io : IO) : Nil
     self.prepared_headers.to_s io
-    io << "\r\n"
+    io << '\r' << '\n'
     self.body_to_s io
   end
 end

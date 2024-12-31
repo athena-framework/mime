@@ -6,6 +6,7 @@ require "./encoder/*"
 require "./exception/*"
 require "./header/*"
 require "./part/*"
+require "./part/multipart/*"
 
 # Convenience alias to make referencing `Athena::MIME` types easier.
 alias AMIME = Athena::MIME

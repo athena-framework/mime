@@ -3,6 +3,9 @@ struct Athena::MIME::Part::Data < Athena::MIME::Part::AbstractText
     new
   end
 
+  @filename : String?
+  @media_type : String
+
   def initialize(
     body : String | IO | AMIME::Part::File,
     filename : String? = nil,
@@ -24,6 +27,12 @@ struct Athena::MIME::Part::Data < Athena::MIME::Part::AbstractText
       self.name = filename
     end
 
-    self.disposition "attachment"
+    self.disposition = "attachment"
+  end
+
+  def as_inline : self
+    self.disposition = "inline"
+
+    self
   end
 end

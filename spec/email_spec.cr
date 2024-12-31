@@ -276,6 +276,102 @@ struct EmailTest < ASPEC::TestCase
     e = AMIME::Email.new.from("me@example.com").to("you@example.com")
     e.text "text content"
     e.html "html content"
-    e.body.should eq AMIME::Part::Alternative.new(text, html)
+    e.body.should eq AMIME::Part::Multipart::Alternative.new(text, html)
+  end
+
+  def test_generate_body_with_text_and_html_non_utf8 : Nil
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content", "iso-8859-1"
+    e.html "html content", "iso-8859-1"
+
+    e.text_charset.should eq "iso-8859-1"
+    e.html_charset.should eq "iso-8859-1"
+
+    e.body.should eq AMIME::Part::Multipart::Alternative.new(
+      AMIME::Part::Text.new("text content", "iso-8859-1"),
+      AMIME::Part::Text.new("html content", "iso-8859-1", "html"),
+    )
+  end
+
+  def test_geneate_body_with_text_content_and_attachment : Nil
+    text, _, file_part, file = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.add_part AMIME::Part::Data.new(file)
+    e.text "text content"
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new text, file_part
+  end
+
+  def test_geneate_body_with_html_content_and_attachment : Nil
+    _, html, file_part, file = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.add_part AMIME::Part::Data.new(file)
+    e.html "html content"
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new html, file_part
+  end
+
+  def test_geneate_body_with_html_content_and_inlined_image_not_reference : Nil
+    _, html, _, _, image_part, image = self.generate_some_parts
+    image_part.as_inline
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.add_part AMIME::Part::Data.new(image).as_inline
+    e.html "html content"
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new(html, image_part)
+  end
+
+  def test_geneate_body_attached_file_only : Nil
+    _, _, file_part, file = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.add_part AMIME::Part::Data.new file
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new file_part
+  end
+
+  def test_geneate_body_inline_image_only : Nil
+    _, _, _, _, image_part, image = self.generate_some_parts
+    image_part.as_inline
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.add_part AMIME::Part::Data.new(image).as_inline
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new image_part
+  end
+
+  def test_geneate_body_with_text_and_html_content_and_attachment : Nil
+    text, html, file_part, file = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content"
+    e.html "html content"
+    e.add_part AMIME::Part::Data.new file
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new(AMIME::Part::Multipart::Alternative.new(text, html), file_part)
+  end
+
+  def test_geneate_body_with_text_and_html_content_and_attachment_and_attached_image_not_referenced : Nil
+    text, html, file_part, file, image_part, image = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content"
+    e.html "html content"
+    e.add_part AMIME::Part::Data.new(file)
+    e.add_part AMIME::Part::Data.new(image, "test.gif")
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new(AMIME::Part::Multipart::Alternative.new(text, html), file_part, image_part)
+  end
+
+  private def generate_some_parts : {AMIME::Part::Text, AMIME::Part::Text, AMIME::Part::Data, ::File, AMIME::Part::Data, ::File}
+    text = AMIME::Part::Text.new "text content"
+    html = AMIME::Part::Text.new "html content", sub_type: "html"
+    file_part = AMIME::Part::Data.new file = ::File.open "#{__DIR__}/fixtures/mimetypes/test", "r"
+    image_part = AMIME::Part::Data.new image = ::File.open "#{__DIR__}/fixtures/mimetypes/test.gif", "r"
+
+    {text, html, file_part, file, image_part, image}
   end
 end
