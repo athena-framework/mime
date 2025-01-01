@@ -19,7 +19,7 @@ class Athena::MIME::Header::Collection
     DATE
   end
 
-  @headers = Hash(String, Array(AMIME::Header::Interface)).new { |hash, key| hash[key] = Array(AMIME::Header::Interface).new }
+  getter headers = Hash(String, Array(AMIME::Header::Interface)).new { |hash, key| hash[key] = Array(AMIME::Header::Interface).new }
   @line_length = 76
 
   def self.new(*headers : AMIME::Header::Interface)
@@ -47,6 +47,10 @@ class Athena::MIME::Header::Collection
 
   def delete(name : String) : Nil
     @headers.delete name
+  end
+
+  def [](name : String) : AMIME::Header::Interface
+    @headers[name].first
   end
 
   def [](name : String, _type : T.class) : T forall T

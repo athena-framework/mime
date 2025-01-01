@@ -45,18 +45,20 @@ class Athena::MIME::Message
   end
 
   def to_s(io : IO) : Nil
+    body = @body || AMIME::Part::Text.new ""
+
+    self.prepared_headers.to_s io
+    body.to_s io
   end
 
-  private def ensure_validity : Nil
-    if !@headers.header_body("to") && !@headers.header_body("cc") && !@headers.header_body("bcc")
+  def ensure_validity : Nil
+    if (!(tos = @headers.header_body("to")) || tos.as(Array(AMIME::Address)).empty?) && (!(ccs = @headers.header_body("cc")) || ccs.as(Array(AMIME::Address)).empty?) && (!(bccs = @headers.header_body("bcc")) || bccs.as(Array(AMIME::Address)).empty?)
       raise AMIME::Exception::Logic.new "An email must have a 'to', 'cc', or 'bcc' header."
     end
 
-    if !@headers.header_body("from") && !@headers.header_body("sender")
+    if (!(froms = @headers.header_body("from")) || froms.as(Array(AMIME::Address)).empty?) && !@headers.header_body("sender")
       raise AMIME::Exception::Logic.new "An email must have a 'from' or a 'sender' header."
     end
-
-    super
   end
 
   def generate_message_id : String

@@ -1,3 +1,5 @@
+require "./spec_helper"
+
 struct EmailTest < ASPEC::TestCase
   def test_subject : Nil
     e = AMIME::Email.new
