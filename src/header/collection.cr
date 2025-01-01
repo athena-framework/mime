@@ -81,6 +81,10 @@ class Athena::MIME::Header::Collection
     @headers.has_key? name.downcase
   end
 
+  def add_id_header(name : String, body : String | Array(String)) : Nil
+    self << AMIME::Header::Identification.new name, body
+  end
+
   def add_text_header(name : String, body : String) : Nil
     self << AMIME::Header::Unstructured.new name, body
   end

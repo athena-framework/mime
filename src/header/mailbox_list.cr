@@ -5,8 +5,6 @@ class Athena::MIME::Header::MailboxList < Athena::MIME::Header::Abstract(Array(A
     super name
   end
 
-  def_equals @value, @name, @max_line_length, @lang, @charset
-
   def body : Array(AMIME::Address)
     @value
   end

@@ -314,7 +314,8 @@ struct EmailTest < ASPEC::TestCase
   end
 
   def test_geneate_body_with_html_content_and_inlined_image_not_reference : Nil
-    _, html, _, _, image_part, image = self.generate_some_parts
+    _, html = self.generate_some_parts
+    image_part = AMIME::Part::Data.new image = ::File.open("#{__DIR__}/fixtures/mimetypes/test.gif", "r")
     image_part.as_inline
 
     e = AMIME::Email.new.from("me@example.com").to("you@example.com")
@@ -334,7 +335,7 @@ struct EmailTest < ASPEC::TestCase
   end
 
   def test_geneate_body_inline_image_only : Nil
-    _, _, _, _, image_part, image = self.generate_some_parts
+    image_part = AMIME::Part::Data.new image = ::File.open("#{__DIR__}/fixtures/mimetypes/test.gif", "r")
     image_part.as_inline
 
     e = AMIME::Email.new.from("me@example.com").to("you@example.com")
@@ -366,11 +367,106 @@ struct EmailTest < ASPEC::TestCase
     e.body.should eq AMIME::Part::Multipart::Mixed.new(AMIME::Part::Multipart::Alternative.new(text, html), file_part, image_part)
   end
 
+  def test_geneate_body_with_text_and_attached_file_and_attached_image_not_referenced : Nil
+    text, _, file_part, file, image_part, image = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content"
+    e.add_part AMIME::Part::Data.new(file)
+    e.add_part AMIME::Part::Data.new(image, "test.gif")
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new(text, file_part, image_part)
+  end
+
+  def test_generate_body_with_text_and_html_and_attached_file_and_attached_image_not_referenced_via_cid : Nil
+    text, _, file_part, file, image_part, image = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.html content = %(html content <img src="test.gif">)
+    e.text "text content"
+    e.add_part AMIME::Part::Data.new(file)
+    e.add_part AMIME::Part::Data.new(image, "test.gif")
+    full_html = AMIME::Part::Text.new content, sub_type: "html"
+
+    e.body.should eq AMIME::Part::Multipart::Mixed.new(AMIME::Part::Multipart::Alternative.new(text, full_html), file_part, image_part)
+  end
+
+  def test_generate_body_with_text_and_html_and_attached_file_and_attached_image_referenced_via_cid : Nil
+    _, _, file_part, file, _, image = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.html content = %(html content <img src="cid:test.gif">)
+    e.text "text content"
+    e.add_part AMIME::Part::Data.new(file)
+    e.add_part AMIME::Part::Data.new(image, "test.gif")
+
+    body = e.body.should be_a AMIME::Part::Multipart::Mixed
+    (related = body.parts).size.should eq 2
+
+    related_part = related[0].should be_a AMIME::Part::Multipart::Related
+    related[1].should eq file_part
+
+    (parts = related_part.parts).size.should eq 2
+
+    alt_part = parts[0].should be_a AMIME::Part::Multipart::Alternative
+    generated_html = alt_part.parts[1].should be_a AMIME::Part::Text
+    data_part = parts[1].should be_a AMIME::Part::Data
+
+    generated_html.body.should contain "cid:#{data_part.content_id}"
+  end
+
+  def test_generate_body_with_text_and_html_and_attached_file_and_attached_image_referenced_via_cid_and_content_id : Nil
+    _, _, file_part, file, _, image = self.generate_some_parts
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content"
+    e.add_part AMIME::Part::Data.new file
+    img = AMIME::Part::Data.new image, "test.gif"
+    e.add_part img
+    e.html %(html content <img src="cid:#{img.content_id}">)
+
+    body = e.body.should be_a AMIME::Part::Multipart::Mixed
+    (related_parts = body.parts).size.should eq 2
+
+    related_part = related_parts[0].should be_a AMIME::Part::Multipart::Related
+    related_parts[1].should eq file_part
+
+    (parts = related_part.parts).size.should eq 2
+    parts[0].should be_a AMIME::Part::Multipart::Alternative
+  end
+
+  def test_generate_body_with_html_and_inlined_image_twice_referenced_via_cid : Nil
+    # Inline image (twice) referenced in the HTML content
+    content = IO::Memory.new %(html content <img src="cid:test.gif">)
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.html content
+
+    # Embedding the same image twice results in one image only in the email
+    image = ::File.open "#{__DIR__}/fixtures/mimetypes/test.gif", "r"
+    e.add_part AMIME::Part::Data.new(image, "test.gif").as_inline
+    e.add_part AMIME::Part::Data.new(image, "test.gif").as_inline
+
+    body = e.body.should be_a AMIME::Part::Multipart::Related
+
+    # 2 parts only, not 3 (text + 1 embedded image)
+    (parts = body.parts).size.should eq 2
+    parts[0].body_to_s.should match /html content <img src=3D"cid:\w+@athena">/
+
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.html %(<div background="cid:test.gif"></div>)
+    e.add_part AMIME::Part::Data.new(image, "test.gif").as_inline
+
+    body = e.body.should be_a AMIME::Part::Multipart::Related
+    (parts = body.parts).size.should eq 2
+    parts[0].body_to_s.should match /<div background=3D"cid:\w+@athena"><\/div>/
+  end
+
   private def generate_some_parts : {AMIME::Part::Text, AMIME::Part::Text, AMIME::Part::Data, ::File, AMIME::Part::Data, ::File}
     text = AMIME::Part::Text.new "text content"
     html = AMIME::Part::Text.new "html content", sub_type: "html"
     file_part = AMIME::Part::Data.new file = ::File.open "#{__DIR__}/fixtures/mimetypes/test", "r"
-    image_part = AMIME::Part::Data.new image = ::File.open "#{__DIR__}/fixtures/mimetypes/test.gif", "r"
+    image_part = AMIME::Part::Data.new (image = ::File.open("#{__DIR__}/fixtures/mimetypes/test.gif", "r")), "test.gif"
 
     {text, html, file_part, file, image_part, image}
   end

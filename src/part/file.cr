@@ -1,6 +1,6 @@
 require "mime"
 
-struct Athena::MIME::Part::File
+class Athena::MIME::Part::File
   getter path : String
 
   def initialize(

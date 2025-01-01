@@ -1,5 +1,17 @@
-abstract struct Athena::MIME::Part::Abstract
+abstract class Athena::MIME::Part::Abstract
   getter headers : AMIME::Header::Collection = AMIME::Header::Collection.new
+
+  macro inherited
+    def ==(other : self)
+      \{% if @type.class? %}
+        return true if same?(other)
+      \{% end %}
+      \{% for field in @type.instance_vars %}
+        return false unless @\{{field.id}} == other.@\{{field.id}}
+      \{% end %}
+      true
+    end
+  end
 
   abstract def body_to_s(io : IO) : Nil
 

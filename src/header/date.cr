@@ -5,8 +5,6 @@ class Athena::MIME::Header::Date < Athena::MIME::Header::Abstract(Time)
     super name
   end
 
-  def_equals @value, @name, @max_line_length, @lang, @charset
-
   def body : Time
     @value
   end

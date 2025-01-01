@@ -1,8 +1,7 @@
 require "mime/multipart"
 
-# FIXME: This should ideally be another `abstract struct`, but am working around `BUG: trying to downcast ...` :(
-module Athena::MIME::Part::AbstractMultipart
-  private getter boundary : String { MIME::Multipart.generate_boundary }
+abstract class Athena::MIME::Part::AbstractMultipart < Athena::MIME::Part::Abstract
+  private getter boundary : String { ::MIME::Multipart.generate_boundary }
   getter parts : Array(Athena::MIME::Part::Abstract) = [] of AMIME::Part::Abstract
 
   def self.new(*parts : AMIME::Part::Abstract) : self

@@ -1,10 +1,13 @@
-struct Athena::MIME::Part::Data < Athena::MIME::Part::AbstractText
+require "./text"
+
+class Athena::MIME::Part::Data < Athena::MIME::Part::Text
   def self.from_path(path : String | Path, name : String? = nil, content_type : String? = nil) : self
     new
   end
 
   @filename : String?
   @media_type : String
+  @content_id : String?
 
   def initialize(
     body : String | IO | AMIME::Part::File,
@@ -24,7 +27,7 @@ struct Athena::MIME::Part::Data < Athena::MIME::Part::AbstractText
 
     if filename
       @filename = filename
-      self.name = filename
+      @name = filename
     end
 
     self.disposition = "attachment"
@@ -34,5 +37,27 @@ struct Athena::MIME::Part::Data < Athena::MIME::Part::AbstractText
     self.disposition = "inline"
 
     self
+  end
+
+  def content_id=(id : String) : self
+    if !id.includes? '@'
+      raise AMIME::Exception::InvalidArgument.new "The '#{id}' CID is invalid as it does not contain an '@' symbol."
+    end
+
+    @content_id = id
+
+    self
+  end
+
+  def content_id : String
+    @content_id ||= self.generate_content_id
+  end
+
+  def has_content_id? : Bool
+    !@content_id.nil?
+  end
+
+  private def generate_content_id : String
+    "#{Random::Secure.hex(16)}@athena"
   end
 end

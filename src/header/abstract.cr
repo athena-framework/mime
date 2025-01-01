@@ -19,6 +19,18 @@ abstract class Athena::MIME::Header::Abstract(T)
 
   def_clone
 
+  macro inherited
+    def ==(other : self)
+      \{% if @type.class? %}
+        return true if same?(other)
+      \{% end %}
+      \{% for field in @type.instance_vars %}
+        return false unless @\{{field.id}} == other.@\{{field.id}}
+      \{% end %}
+      true
+    end
+  end
+
   def to_s(io : IO) : Nil
     # TODO: Is there a way to make this more stream based?
     io << self.tokens_to_string self.to_tokens

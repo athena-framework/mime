@@ -259,7 +259,7 @@ class Athena::MIME::Email < Athena::MIME::Message
     end
 
     unless related_parts.empty?
-      # TODO: Handle this
+      part = AMIME::Part::Multipart::Related.new part.not_nil!, related_parts
     end
 
     unless other_parts.empty?
@@ -281,20 +281,47 @@ class Athena::MIME::Email < Athena::MIME::Message
       html = html_part.body
 
       regexes = {
-        /<img\s+[^>]*src\s*=\s*(?:([\'"])cid:(.+?)\\1|cid:([^>\s]+))/i,
-        /<\w+\s+[^>]*background\s*=\s*(?:([\'"])cid:(.+?)\\1|cid:([^>\s]+))/i,
+        /<img\s+[^>]*src\s*=\s*(?:([\'"])cid:(.+?)\1|cid:([^>\s]+))/i,
+        /<\w+\s+[^>]*background\s*=\s*(?:([\'"])cid:(.+?)\1|cid:([^>\s]+))/i,
       }
 
       regexes.each do |regex|
+        html.scan regex do |matches|
+          if m2 = matches[2]?
+            names << m2
+          end
+
+          if m3 = matches[3]?
+            names << m3
+          end
+        end
       end
+
+      names = names.uniq!
     end
 
     other_parts = Array(AMIME::Part::Abstract).new
     related_parts = Hash(String, AMIME::Part::Abstract).new
 
     @attachments.each do |part|
-      names.each do |name|
+      skip_part = names.each do |name|
+        if name != part.name && (!part.has_content_id? || name != part.content_id)
+          next
+        end
+
+        break true if related_parts.has_key? name
+
+        if html && name != part.content_id
+          html = html.gsub("cid:#{name}", "cid:#{part.content_id}")
+        end
+        related_parts[name] = part
+        part.name = part.content_id
+        part.as_inline
+
+        break true
       end
+
+      next if skip_part
 
       other_parts << part
     end
