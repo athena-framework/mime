@@ -462,6 +462,28 @@ struct EmailTest < ASPEC::TestCase
     parts[0].body_to_s.should match /<div background=3D"cid:\w+@athena"><\/div>/
   end
 
+  def test_attachments : Nil
+    # Inline part
+    contents = ::File.read path = "#{__DIR__}/fixtures/mimetypes/test"
+    data_part = AMIME::Part::Data.new file = ::File.open(path), "test"
+    inline = AMIME::Part::Data.new(contents, "test").as_inline
+
+    e = AMIME::Email.new
+    e.add_part AMIME::Part::Data.new file, "test"
+    e.add_part AMIME::Part::Data.new(contents, "test").as_inline
+    e.attachments.should eq [data_part, inline]
+
+    # Inline part from path
+    data_part = AMIME::Part::Data.from_path path, "test"
+    inline = AMIME::Part::Data.from_path(path, "test").as_inline
+    e = AMIME::Email.new
+    e.add_part AMIME::Part::Data.new AMIME::Part::File.new(path)
+    e.add_part AMIME::Part::Data.new(AMIME::Part::File.new(path)).as_inline
+
+    e.attachments.map(&.body_to_s).should eq [data_part.body_to_s, inline.body_to_s]
+    e.attachments.map(&.prepared_headers).should eq [data_part.prepared_headers, inline.prepared_headers]
+  end
+
   private def generate_some_parts : {AMIME::Part::Text, AMIME::Part::Text, AMIME::Part::Data, ::File, AMIME::Part::Data, ::File}
     text = AMIME::Part::Text.new "text content"
     html = AMIME::Part::Text.new "html content", sub_type: "html"

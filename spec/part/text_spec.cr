@@ -21,7 +21,7 @@ struct TextPartTest < ASPEC::TestCase
     p.body_to_s.should eq "content"
   end
 
-  def test_constructor_file : Nil
+  def test_constructor_real_file : Nil
     File.open "#{__DIR__}/../fixtures/content.txt", "r" do |file|
       p = AMIME::Part::Text.new file
       p.body.should eq "content"
@@ -29,9 +29,15 @@ struct TextPartTest < ASPEC::TestCase
     end
   end
 
+  def test_constructor_file_part : Nil
+    p = AMIME::Part::Text.new(AMIME::Part::File.new("#{__DIR__}/../fixtures/content.txt"))
+    p.body.should eq "content"
+    p.body_to_s.should eq "content"
+  end
+
   def test_constructor_unknown_file : Nil
     expect_raises AMIME::Exception::InvalidArgument, "File is not readable." do
-      AMIME::Part::Text.new File.new "#{__DIR__}/../fixtures/", "r"
+      AMIME::Part::Text.new(AMIME::Part::File.new("#{__DIR__}/../fixtures/")).body
     end
   end
 

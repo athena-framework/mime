@@ -11,7 +11,7 @@ class Athena::MIME::Part::File
   end
 
   def content_type : String
-    if mime_type = MIME.from_filename?(body.path)
+    if mime_type = ::MIME.from_filename?(@path)
       return mime_type
     end
 
@@ -23,6 +23,6 @@ class Athena::MIME::Part::File
   end
 
   def filename : String
-    @filename ||= File.basename @path
+    @filename ||= ::File.basename @path
   end
 end

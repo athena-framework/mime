@@ -2,11 +2,12 @@ require "./text"
 
 class Athena::MIME::Part::Data < Athena::MIME::Part::Text
   def self.from_path(path : String | Path, name : String? = nil, content_type : String? = nil) : self
-    new
+    new AMIME::Part::File.new(path), name, content_type
   end
 
+  getter media_type : String
+
   @filename : String?
-  @media_type : String
   @content_id : String?
 
   def initialize(
@@ -16,7 +17,7 @@ class Athena::MIME::Part::Data < Athena::MIME::Part::Text
     encoding : String? = nil
   )
     if body.is_a?(AMIME::Part::File) && filename.nil?
-      filename = body.path
+      filename = body.filename
     end
 
     content_type ||= body.is_a?(AMIME::Part::File) ? body.content_type : "application/octet-stream"
@@ -27,10 +28,24 @@ class Athena::MIME::Part::Data < Athena::MIME::Part::Text
 
     if filename
       @filename = filename
-      @name = filename
+      self.name = filename
     end
 
     self.disposition = "attachment"
+  end
+
+  def prepared_headers : AMIME::Header::Collection
+    headers = super
+
+    if cid = @content_id
+      headers.upsert "content-id", cid, ->headers.add_id_header(String, String)
+    end
+
+    if name = @filename
+      headers.header_parameter "content-disposition", "filename", name
+    end
+
+    headers
   end
 
   def as_inline : self
@@ -47,6 +62,10 @@ class Athena::MIME::Part::Data < Athena::MIME::Part::Text
     @content_id = id
 
     self
+  end
+
+  def content_type : String
+    "#{self.media_type}/#{self.media_sub_type}"
   end
 
   def content_id : String

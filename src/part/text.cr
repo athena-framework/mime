@@ -6,15 +6,16 @@ class Athena::MIME::Part::Text < Athena::MIME::Part::Abstract
   property disposition : String? = nil
   property name : String? = nil
 
+  @body : String | IO | AMIME::Part::File
   @encoding : String
 
   def initialize(
-    body : String | IO,
+    body : String | IO | AMIME::Part::File,
     @charset : String? = "UTF-8",
     @sub_type : String = "plain",
     encoding : String? = nil
   )
-    if body.is_a? ::File
+    if body.is_a? AMIME::Part::File
       if !::File::Info.readable?(body.path) || ::File.directory?(body.path)
         raise AMIME::Exception::InvalidArgument.new "File is not readable."
       end
@@ -48,6 +49,8 @@ class Athena::MIME::Part::Text < Athena::MIME::Part::Abstract
 
   def body : String
     case body = @body
+    in AMIME::Part::File
+      ::File.read body.path
     in String then body
     in IO
       body.rewind if body.responds_to? :rewind
