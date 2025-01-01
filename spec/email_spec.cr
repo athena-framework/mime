@@ -484,6 +484,28 @@ struct EmailTest < ASPEC::TestCase
     e.attachments.map(&.prepared_headers).should eq [data_part.prepared_headers, inline.prepared_headers]
   end
 
+  def test_body_cache_same : Nil
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content"
+
+    body1 = e.body
+    body2 = e.body
+
+    # Must be the same instance so that DKIM sig is the same
+    body1.should be body2
+  end
+
+  def test_body_cache_different : Nil
+    e = AMIME::Email.new.from("me@example.com").to("you@example.com")
+    e.text "text content"
+    body1 = e.body
+    e.html "<b>bar</b>"
+    body2 = e.body
+
+    # Must not be the same due to the content changing
+    body1.should_not be body2
+  end
+
   private def generate_some_parts : {AMIME::Part::Text, AMIME::Part::Text, AMIME::Part::Data, ::File, AMIME::Part::Data, ::File}
     text = AMIME::Part::Text.new "text content"
     html = AMIME::Part::Text.new "html content", sub_type: "html"

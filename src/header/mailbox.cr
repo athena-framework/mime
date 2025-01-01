@@ -17,9 +17,9 @@ class Athena::MIME::Header::Mailbox < Athena::MIME::Header::Abstract(Athena::MIM
     str = @value.encoded_address
 
     if name = @value.name
-      str = "#{self.create_phrase(io, self, name, @charset, true)} <#{str}>"
+      str = "#{self.create_phrase(self, name, @charset, true)} <#{str}>"
     end
 
-    str
+    io << str
   end
 end

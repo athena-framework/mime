@@ -1,6 +1,6 @@
 class Athena::MIME::Email < Athena::MIME::Message
   enum Priority
-    HIGHEST
+    HIGHEST = 1
     HIGH
     NORMAL
     LOW

@@ -45,6 +45,14 @@ class Athena::MIME::Header::Collection
     end
   end
 
+  def delete(name : String) : Nil
+    @headers.delete name
+  end
+
+  def [](name : String, _type : T.class) : T forall T
+    @headers[name].first.as T
+  end
+
   def []?(name : String, _type : T.class) : T? forall T
     return unless header = self.[name]?
 

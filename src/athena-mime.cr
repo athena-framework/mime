@@ -23,17 +23,3 @@ module Athena::MIME
 
   module Part; end
 end
-
-# email = AMIME::Email
-#   .new
-#   .subject("Hello World")
-#   .date(Time.utc)
-#   .subject("Goodbye World")
-#   .date(Time.local)
-#   .return_path("foo@example.com")
-#   .to("foo@example.com")
-#   .from("bar@example.com")
-#   .priority(:low)
-#   .text("Hello there good sir!")
-
-# puts email.body
