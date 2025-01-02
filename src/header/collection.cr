@@ -114,7 +114,7 @@ class Athena::MIME::Header::Collection
   end
 
   def add_mailbox_list_header(name : String, body : Array(AMIME::Address | String)) : Nil
-    self << AMIME::Header::MailboxList.new name, AMIME::Address.create(body)
+    self << AMIME::Header::MailboxList.new name, AMIME::Address.create_multiple(body)
   end
 
   def add_parameterized_header(name : String, body : String, params : Hash(String, String) = {} of String => String) : Nil

@@ -8,13 +8,13 @@ struct Athena::MIME::Address
   getter address : String
   getter name : String
 
-  def self.create(*addresses : self | String) : Array(self)
-    self.create addresses
+  def self.create_multiple(*addresses : self | String) : Array(self)
+    self.create_multiple addresses
   end
 
-  def self.create(addresses : Enumerable(self | String)) : Array(self)
+  def self.create_multiple(addresses : Enumerable(self | String)) : Array(self)
     addresses.map do |a|
-      create a
+      self.create a
     end.to_a
   end
 

@@ -10,7 +10,7 @@ class Athena::MIME::Message
     @headers = headers || AMIME::Header::Collection.new
   end
 
-  def prepared_headers
+  def prepared_headers : AMIME::Header::Collection
     headers = @headers.clone
 
     unless headers.has_key? "from"
@@ -45,7 +45,7 @@ class Athena::MIME::Message
   end
 
   def to_s(io : IO) : Nil
-    body = @body || AMIME::Part::Text.new ""
+    body = self.body || AMIME::Part::Text.new ""
 
     self.prepared_headers.to_s io
     body.to_s io

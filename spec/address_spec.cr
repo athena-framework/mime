@@ -35,7 +35,7 @@ struct AddressTest < ASPEC::TestCase
     bar = AMIME::Address.new "bar@example.com"
     baz = AMIME::Address.new "baz@example.com"
 
-    AMIME::Address.create("foo@example.com", "bar@example.com", baz).should eq [foo, bar, baz]
+    AMIME::Address.create_multiple("foo@example.com", "bar@example.com", baz).should eq [foo, bar, baz]
   end
 
   def test_unicode_local_part : Nil

@@ -1,6 +1,7 @@
 require "./address"
 require "./message"
 require "./email"
+require "./draft_email"
 
 require "./encoder/*"
 require "./exception/*"

@@ -155,13 +155,13 @@ class Athena::MIME::Email < Athena::MIME::Message
       return self.set_list_address_header_body name, addresses
     end
 
-    header.add_addresses AMIME::Address.create addresses
+    header.add_addresses AMIME::Address.create_multiple addresses
 
     self
   end
 
   private def set_list_address_header_body(name : String, addresses : Enumerable(AMIME::Address | String)) : self
-    addresses = AMIME::Address.create addresses
+    addresses = AMIME::Address.create_multiple addresses
 
     if header = @headers[name]?
       header.body = addresses
@@ -333,7 +333,7 @@ class Athena::MIME::Email < Athena::MIME::Message
     {html_part, other_parts, related_parts.values}
   end
 
-  private def ensure_validity : Nil
+  def ensure_validity : Nil
     self.ensure_body_is_valid
 
     if "1" == @headers.header_body("x-unsent")
